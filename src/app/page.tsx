@@ -500,13 +500,28 @@ export default function CapturePage() {
             OpenAI API key is missing. Go to <a href="/settings">Settings</a> and add your key.
           </p>
         )}
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          capture="environment"
-          disabled={!online || authenticated === false || !apiReady || busy}
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-        />
+        <div className="card-upload">
+          <input
+            id="card-upload-input"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            capture="environment"
+            disabled={!online || authenticated === false || !apiReady || busy}
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="card-upload-input"
+          />
+
+          <label htmlFor="card-upload-input" className="card-upload-button">
+            <span className="card-upload-icon">📷</span>
+
+            <div className="card-upload-text">
+              <strong>Scan Business Card</strong>
+              <span>Tap to take a photo or upload an image</span>
+              <span>PNG • JPG • WEBP</span>
+            </div>
+
+          </label>
+        </div>
         <div className="row" style={{ marginTop: 10 }}>
           <button disabled={!online || authenticated === false || !apiReady || !file || busy} onClick={extract}>
             Extract Fields
