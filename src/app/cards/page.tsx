@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatusModal } from "@/components/StatusModal";
 import { apiFetch } from "@/lib/api-client";
 import { cacheCards, cachedCardsToCsv, getCachedCards, type CachedCard } from "@/lib/idb";
@@ -30,6 +30,23 @@ type ServerCard = {
   phones: { value: string }[];
   emails: { value: string }[];
   websites: { value: string }[];
+};
+
+type ImportCardPayload = {
+  name: string;
+  company: string | null;
+  template: CardTemplate;
+  colorScheme: CardColorScheme;
+  logoImage: string | null;
+  jobTitle: string | null;
+  address: string | null;
+  notes: string | null;
+  phoneNumbers: string[];
+  emails: string[];
+  websites: string[];
+  confidence: null;
+  rawText: null;
+  imageUrl: null;
 };
 
 const TEMPLATE_OPTIONS: { value: CardTemplate; label: string }[] = [
@@ -66,6 +83,81 @@ function splitList(value: string): string[] {
     .filter(Boolean);
 }
 
+function splitPipeSeparated(value: unknown): string[] {
+  if (typeof value !== "string") return [];
+  return value
+    .split("|")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+function normalizeImportCard(record: unknown): ImportCardPayload | null {
+  if (!record || typeof record !== "object") return null;
+  const source = record as Record<string, unknown>;
+  const name = typeof source.name === "string" ? source.name.trim() : "";
+  if (!name) return null;
+
+  const template = typeof source.template === "string" ? source.template : "classic";
+  const colorScheme = typeof source.colorScheme === "string" ? source.colorScheme : "forest";
+  const phonesFromObjects = Array.isArray(source.phones)
+    ? source.phones
+        .map((p) => (p && typeof p === "object" ? (p as { value?: unknown }).value : p))
+        .filter((v): v is string => typeof v === "string" && !!v.trim())
+        .map((v) => v.trim())
+    : [];
+  const emailsFromObjects = Array.isArray(source.emails)
+    ? source.emails
+        .map((e) => (e && typeof e === "object" ? (e as { value?: unknown }).value : e))
+        .filter((v): v is string => typeof v === "string" && !!v.trim())
+        .map((v) => v.trim())
+    : [];
+  const websitesFromObjects = Array.isArray(source.websites)
+    ? source.websites
+        .map((w) => (w && typeof w === "object" ? (w as { value?: unknown }).value : w))
+        .filter((v): v is string => typeof v === "string" && !!v.trim())
+        .map((v) => v.trim())
+    : [];
+
+  const phones =
+    phonesFromObjects.length > 0
+      ? phonesFromObjects
+      : Array.isArray(source.phoneNumbers)
+        ? source.phoneNumbers.filter((v): v is string => typeof v === "string" && !!v.trim()).map((v) => v.trim())
+        : Array.isArray(source.phones)
+          ? source.phones.filter((v): v is string => typeof v === "string" && !!v.trim()).map((v) => v.trim())
+          : splitPipeSeparated(source.phones);
+
+  const emails =
+    emailsFromObjects.length > 0
+      ? emailsFromObjects
+      : Array.isArray(source.emails)
+        ? source.emails.filter((v): v is string => typeof v === "string" && !!v.trim()).map((v) => v.trim())
+        : splitPipeSeparated(source.emails);
+
+  const websites =
+    websitesFromObjects.length > 0
+      ? websitesFromObjects
+      : Array.isArray(source.websites)
+        ? source.websites.filter((v): v is string => typeof v === "string" && !!v.trim()).map((v) => v.trim())
+        : splitPipeSeparated(source.websites);
+
+  return {
+    name,
+    company: typeof source.company === "string" ? source.company.trim() || null : null,
+    template: template as CardTemplate,
+    colorScheme: colorScheme as CardColorScheme,
+    logoImage: typeof source.logoImage === "string" ? source.logoImage : null,
+    jobTitle: typeof source.jobTitle === "string" ? source.jobTitle.trim() || null : null,
+    address: typeof source.address === "string" ? source.address.trim() || null : null,
+    notes: typeof source.notes === "string" ? source.notes.trim() || null : null,
+    phoneNumbers: phones,
+    emails,
+    websites,
+    confidence: null,
+    rawText: null,
+    imageUrl: null
+  };
+}
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -139,6 +231,7 @@ export default function CardsPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [busyCardId, setBusyCardId] = useState<string | null>(null);
   const [stylingCard, setStylingCard] = useState<CachedCard | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasUnsavedEditChanges = useMemo(() => {
     if (!editForm || !editOriginal) return false;
@@ -271,6 +364,54 @@ export default function CardsPage() {
     download("business-cards.cached.csv", cachedCardsToCsv(cards), "text/csv");
   }
 
+  async function importFromJsonFile(fileCandidate: File | null) {
+    if (!fileCandidate) return;
+    if (!online) {
+      setError("Importing requires internet connection.");
+      return;
+    }
+
+    setError("");
+
+    try {
+      const text = await fileCandidate.text();
+      const parsed = JSON.parse(text) as unknown;
+      const records = Array.isArray(parsed) ? parsed : [];
+      const cardsToImport = records
+        .map((record) => normalizeImportCard(record))
+        .filter((record): record is ImportCardPayload => !!record);
+
+      if (cardsToImport.length === 0) {
+        throw new Error("No valid cards found in JSON file.");
+      }
+
+      let imported = 0;
+      let failed = 0;
+
+      for (const card of cardsToImport) {
+        const res = await apiFetch("/api/cards", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ card, saveAsNew: true })
+        });
+
+        if (res.ok) {
+          imported += 1;
+        } else {
+          failed += 1;
+        }
+      }
+
+      await loadCards();
+      setStatusMessage(
+        failed > 0
+          ? `Imported ${imported} cards. ${failed} card(s) failed to import.`
+          : `Imported ${imported} cards.`
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Import failed");
+    }
+  }
   function clearEditState() {
     setEditingCardId(null);
     setEditForm(null);
@@ -421,7 +562,7 @@ export default function CardsPage() {
 
   return (
     <section className="panel card-deck-panel">
-      <div className="card-deck-header">
+            <div className="card-deck-header">
         <div className="card-deck-heading">
           <div>
             <h1>Card Deck</h1>
@@ -459,6 +600,17 @@ export default function CardsPage() {
           <div className="row" style={{ marginTop: 10 }}>
             <button onClick={() => (online ? exportOnline("csv") : exportOffline("csv"))}>Export CSV</button>
             <button onClick={() => (online ? exportOnline("json") : exportOffline("json"))}>Export JSON</button>
+            <button disabled={!online} onClick={() => importInputRef.current?.click()}>Import JSON</button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json,application/json"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                void importFromJsonFile(e.target.files?.[0] || null);
+                e.currentTarget.value = "";
+              }}
+            />
           </div>
 
           {!online && <p>Offline export uses cached records only.</p>}
@@ -732,4 +884,8 @@ export default function CardsPage() {
     </section>
   );
 }
+
+
+
+
 
