@@ -1,0 +1,3 @@
+display_name: Merge Branches
+short_description: Merge multi-worktree branches into codex/dev-merge with conflict resolution and testing.
+default_prompt: Merge branches one by one into codex/dev-merge, resolve conflicts, run tests, commit patches when needed, and push only codex/dev-merge.

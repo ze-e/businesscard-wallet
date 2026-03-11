@@ -653,7 +653,7 @@ export default function CapturePage() {
                 </p>
                 {mergeCard.logoImage && (
                   <img src={mergeCard.logoImage} alt="Merged logo" style={{ maxWidth: 180, maxHeight: 100, objectFit: "contain", border: "1px solid #d6dfd8", borderRadius: 8, background: "#fff" }} />
-                )}`r`n                <div style={{ marginTop: 8 }}>
+                )}                <div style={{ marginTop: 8 }}>
                   <button className="button-secondary" onClick={() => setMergeCard((prev) => ({ ...prev, logoImage: null }))}>
                     Remove Logo Image
                   </button>
