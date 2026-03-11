@@ -44,112 +44,6 @@ function splitList(value: string): string[] {
     .filter(Boolean);
 }
 
-
-function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") {
-    return false;
-  }
-
-  const ua = navigator.userAgent || "";
-  const iPadOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
-  return /Android|iPhone|iPad|iPod/i.test(ua) || iPadOS;
-}
-
-function isIOSDevice(): boolean {
-  if (typeof navigator === "undefined") {
-    return false;
-  }
-
-  const ua = navigator.userAgent || "";
-  const iPadOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
-  return /iPhone|iPad|iPod/i.test(ua) || iPadOS;
-}
-
-function escapeVCardValue(value: string): string {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/\n/g, "\\n")
-    .replace(/;/g, "\\;")
-    .replace(/,/g, "\\,");
-}
-
-function sanitizeFilename(value: string): string {
-  return value.replace(/[<>:"/\\|?*\x00-\x1F]/g, "").trim();
-}
-
-function toVCard(cardInput: CreateCardInput): string {
-  const lines: string[] = ["BEGIN:VCARD", "VERSION:3.0", `FN:${escapeVCardValue(cardInput.name)}`];
-
-  if (cardInput.company) {
-    lines.push(`ORG:${escapeVCardValue(cardInput.company)}`);
-  }
-  if (cardInput.jobTitle) {
-    lines.push(`TITLE:${escapeVCardValue(cardInput.jobTitle)}`);
-  }
-  if (cardInput.address) {
-    lines.push(`ADR;TYPE=WORK:;;${escapeVCardValue(cardInput.address)};;;;`);
-  }
-
-  for (const phone of cardInput.phoneNumbers) {
-    lines.push(`TEL;TYPE=CELL:${escapeVCardValue(phone)}`);
-  }
-  for (const email of cardInput.emails) {
-    lines.push(`EMAIL;TYPE=INTERNET:${escapeVCardValue(email)}`);
-  }
-  for (const website of cardInput.websites) {
-    lines.push(`URL:${escapeVCardValue(website)}`);
-  }
-  if (cardInput.notes) {
-    lines.push(`NOTE:${escapeVCardValue(cardInput.notes)}`);
-  }
-
-  lines.push("END:VCARD");
-  return lines.join("\r\n");
-}
-
-async function saveContactToDevice(cardInput: CreateCardInput): Promise<boolean> {
-  if (typeof window === "undefined" || typeof navigator === "undefined" || !isMobileDevice()) {
-    return false;
-  }
-
-  const vCard = toVCard(cardInput);
-  const name = sanitizeFilename(cardInput.name) || "contact";
-  const fileName = `${name}.vcf`;
-  const blob = new Blob([vCard], { type: "text/vcard;charset=utf-8" });
-
-  try {
-    if (typeof navigator.share === "function" && typeof File !== "undefined") {
-      const file = new File([blob], fileName, { type: "text/vcard;charset=utf-8" });
-      const canShareFiles =
-        typeof navigator.canShare === "function" ? navigator.canShare({ files: [file] }) : true;
-
-      if (canShareFiles) {
-        await navigator.share({ title: cardInput.name, text: "Save contact", files: [file] });
-        return true;
-      }
-    }
-  } catch {
-    // If share is canceled or unavailable, fall back to opening/downloading VCF.
-  }
-
-  const url = URL.createObjectURL(blob);
-
-  if (isIOSDevice()) {
-    window.open(url, "_blank", "noopener,noreferrer");
-  } else {
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.rel = "noopener noreferrer";
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-  window.setTimeout(() => URL.revokeObjectURL(url), 10000);
-  return true;
-}
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
@@ -545,8 +439,6 @@ export default function CapturePage() {
       if (!res.ok) {
         throw new Error(data.error || "Failed to save card");
       }
-
-      await saveContactToDevice(card);
       setCard(EMPTY_CARD);
       setFile(null);
       setDuplicate(null);
@@ -817,4 +709,7 @@ export default function CapturePage() {
     </>
   );
 }
+
+
+
 
