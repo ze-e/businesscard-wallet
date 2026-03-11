@@ -129,6 +129,7 @@ export default function CardsPage() {
   const [query, setQuery] = useState("");
   const [sortOption, setSortOption] = useState<CardSortOption>("name-asc");
   const [cards, setCards] = useState<CachedCard[]>([]);
+  const [isMobileHeaderExpanded, setIsMobileHeaderExpanded] = useState(false);
   const [error, setError] = useState("");
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<CachedCard | null>(null);
@@ -421,33 +422,48 @@ export default function CardsPage() {
   return (
     <section className="panel card-deck-panel">
       <div className="card-deck-header">
-        <h1>Card Deck</h1>
-        <p className="muted">Search by name, company, phone, email, or website.</p>
-
-        <div className="row">
-          <input placeholder="Search cards" value={query} onChange={(e) => setQuery(e.target.value)} />
-          <button onClick={() => loadCards()}>Refresh</button>
-        </div>
-        <div className="row" style={{ marginTop: 10 }}>
-          <label>
-            Sort
-            <select value={sortOption} onChange={(e) => setSortOption(e.target.value as CardSortOption)}>
-              <option value="name-asc">Name (asc)</option>
-              <option value="name-desc">Name (desc)</option>
-              <option value="company-asc">Company (asc)</option>
-              <option value="company-desc">Company (desc)</option>
-              <option value="color">Color (grouped)</option>
-            </select>
-          </label>
+        <div className="card-deck-heading">
+          <div>
+            <h1>Card Deck</h1>
+            <p className="muted">Search by name, company, phone, email, or website.</p>
+          </div>
+          <button
+            type="button"
+            className="button-secondary card-deck-mobile-toggle"
+            aria-expanded={isMobileHeaderExpanded}
+            aria-controls="card-deck-controls"
+            onClick={() => setIsMobileHeaderExpanded((prev) => !prev)}
+          >
+            {isMobileHeaderExpanded ? "Hide Controls" : "Show Controls"}
+          </button>
         </div>
 
-        <div className="row" style={{ marginTop: 10 }}>
-          <button onClick={() => (online ? exportOnline("csv") : exportOffline("csv"))}>Export CSV</button>
-          <button onClick={() => (online ? exportOnline("json") : exportOffline("json"))}>Export JSON</button>
-        </div>
+        <div id="card-deck-controls" className={`card-deck-controls${isMobileHeaderExpanded ? " is-open" : ""}`}>
+          <div className="row">
+            <input placeholder="Search cards" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <button onClick={() => loadCards()}>Refresh</button>
+          </div>
+          <div className="row" style={{ marginTop: 10 }}>
+            <label>
+              Sort
+              <select value={sortOption} onChange={(e) => setSortOption(e.target.value as CardSortOption)}>
+                <option value="name-asc">Name (asc)</option>
+                <option value="name-desc">Name (desc)</option>
+                <option value="company-asc">Company (asc)</option>
+                <option value="company-desc">Company (desc)</option>
+                <option value="color">Color (grouped)</option>
+              </select>
+            </label>
+          </div>
 
-        {!online && <p>Offline export uses cached records only.</p>}
-        {error && <p style={{ color: "#b91c1c" }}>{error}</p>}
+          <div className="row" style={{ marginTop: 10 }}>
+            <button onClick={() => (online ? exportOnline("csv") : exportOffline("csv"))}>Export CSV</button>
+            <button onClick={() => (online ? exportOnline("json") : exportOffline("json"))}>Export JSON</button>
+          </div>
+
+          {!online && <p>Offline export uses cached records only.</p>}
+          {error && <p style={{ color: "#b91c1c" }}>{error}</p>}
+        </div>
       </div>
       <div
         className="card-deck-list"

@@ -595,3 +595,42 @@ button[disabled] {
   text-align: center;
   justify-items: center;
 }
+
+.card-deck-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.card-deck-mobile-toggle {
+  display: none;
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.card-deck-controls {
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .card-deck-header {
+    padding-bottom: 0;
+  }
+
+  .card-deck-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+  }
+
+  .card-deck-controls {
+    display: none;
+    padding-bottom: 10px;
+  }
+
+  .card-deck-controls.is-open {
+    display: block;
+  }
+}
