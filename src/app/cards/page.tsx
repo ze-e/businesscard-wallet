@@ -839,6 +839,13 @@ export default function CardsPage() {
               />
             </label>
             <div className="modal-actions">
+              <button
+                className="button-danger"
+                disabled={busyCardId === editingCardId}
+                onClick={() => setDeleteCandidate(editForm)}
+              >
+                Delete Card
+              </button>
               <button className="button-secondary" disabled={busyCardId === editingCardId} onClick={requestCancelEdit}>
                 Cancel
               </button>
