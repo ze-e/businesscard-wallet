@@ -589,7 +589,7 @@ async function importCardsFromFile(fileCandidate: File | null) {
             <div className="card-deck-header">
         <div className="card-deck-heading">
           <div>
-            <h1>Card Deck</h1>
+            <h1>Wallet</h1>
             <p className="muted">Search by name, company, phone, email, or website.</p>
           </div>
           <button
@@ -599,7 +599,7 @@ async function importCardsFromFile(fileCandidate: File | null) {
             aria-controls="card-deck-controls"
             onClick={() => setIsMobileHeaderExpanded((prev) => !prev)}
           >
-            {isMobileHeaderExpanded ? "Hide Controls" : "Show Controls"}
+            {isMobileHeaderExpanded ? "Hide Options" : "More Options"}
           </button>
         </div>
 
@@ -770,11 +770,11 @@ async function importCardsFromFile(fileCandidate: File | null) {
               </label>
             </div>
             <div className="modal-actions">
-              <button className="button-secondary" onClick={() => setStylingCard(null)}>
-                Cancel
-              </button>
               <button disabled={busyCardId === stylingCard.id} onClick={saveStyle}>
                 Save Style
+              </button>
+              <button className="button-secondary" onClick={() => setStylingCard(null)}>
+                Cancel
               </button>
             </div>
           </div>

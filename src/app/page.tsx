@@ -488,8 +488,8 @@ export default function CapturePage() {
   return (
     <>
       <section className="panel">
-        <h1>Capture Business Card</h1>
-        <p className="muted">Phone and all fields except name are optional. Edit extracted values before saving.</p>
+        <h1>Virtual Business Card Wallet</h1>
+        <p className="muted">Phone and all fields except name are optional. You can edit extracted values before saving, or create a card manually.</p>
         {authenticated === false && (
           <p>
             Please <a href="/login">login</a> to access capture and your saved cards.
