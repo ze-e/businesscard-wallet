@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatusModal } from "@/components/StatusModal";
 import { apiFetch } from "@/lib/api-client";
 import { cacheCards, cachedCardsToCsv, getCachedCards, type CachedCard } from "@/lib/idb";
+import Papa from "papaparse";
 
 type CardTemplate =
   | "classic"
@@ -364,54 +365,77 @@ export default function CardsPage() {
     download("business-cards.cached.csv", cachedCardsToCsv(cards), "text/csv");
   }
 
-  async function importFromJsonFile(fileCandidate: File | null) {
-    if (!fileCandidate) return;
-    if (!online) {
-      setError("Importing requires internet connection.");
-      return;
-    }
 
-    setError("");
+async function importCardsFromFile(fileCandidate: File | null) {
+  if (!fileCandidate) return;
 
-    try {
-      const text = await fileCandidate.text();
-      const parsed = JSON.parse(text) as unknown;
-      const records = Array.isArray(parsed) ? parsed : [];
-      const cardsToImport = records
-        .map((record) => normalizeImportCard(record))
-        .filter((record): record is ImportCardPayload => !!record);
-
-      if (cardsToImport.length === 0) {
-        throw new Error("No valid cards found in JSON file.");
-      }
-
-      let imported = 0;
-      let failed = 0;
-
-      for (const card of cardsToImport) {
-        const res = await apiFetch("/api/cards", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ card, saveAsNew: true })
-        });
-
-        if (res.ok) {
-          imported += 1;
-        } else {
-          failed += 1;
-        }
-      }
-
-      await loadCards();
-      setStatusMessage(
-        failed > 0
-          ? `Imported ${imported} cards. ${failed} card(s) failed to import.`
-          : `Imported ${imported} cards.`
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Import failed");
-    }
+  if (!online) {
+    setError("Importing requires internet connection.");
+    return;
   }
+
+  setError("");
+
+  try {
+    const text = await fileCandidate.text();
+    const extension = fileCandidate.name.split(".").pop()?.toLowerCase();
+
+    let records: unknown[] = [];
+
+    if (extension === "json") {
+      const parsed = JSON.parse(text);
+      records = Array.isArray(parsed) ? parsed : [];
+    }
+
+    else if (extension === "csv" || extension === "tsv") {
+      const parsed = Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter: extension === "tsv" ? "\t" : ","
+      });
+
+      records = parsed.data as unknown[];
+    }
+
+    else {
+      throw new Error("Unsupported file type. Please upload JSON, CSV, or TSV.");
+    }
+
+    const cardsToImport = records
+      .map((record) => normalizeImportCard(record))
+      .filter((record): record is ImportCardPayload => !!record);
+
+    if (cardsToImport.length === 0) {
+      throw new Error("No valid cards found in file.");
+    }
+
+    let imported = 0;
+    let failed = 0;
+
+    for (const card of cardsToImport) {
+      const res = await apiFetch("/api/cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ card, saveAsNew: true })
+      });
+
+      if (res.ok) imported++;
+      else failed++;
+    }
+
+    await loadCards();
+
+    setStatusMessage(
+      failed > 0
+        ? `Imported ${imported} cards. ${failed} card(s) failed to import.`
+        : `Imported ${imported} cards.`
+    );
+
+  } catch (e) {
+    setError(e instanceof Error ? e.message : "Import failed");
+  }
+}
+
   function clearEditState() {
     setEditingCardId(null);
     setEditForm(null);
@@ -598,8 +622,8 @@ export default function CardsPage() {
           </div>
 
           <div className="row" style={{ marginTop: 10 }}>
-            <button onClick={() => (online ? exportOnline("csv") : exportOffline("csv"))}>Export CSV</button>
             <button onClick={() => (online ? exportOnline("json") : exportOffline("json"))}>Export JSON</button>
+            <button onClick={() => (online ? exportOnline("csv") : exportOffline("csv"))}>Export CSV</button>
             <button disabled={!online} onClick={() => importInputRef.current?.click()}>Import JSON</button>
             <input
               ref={importInputRef}
@@ -607,7 +631,19 @@ export default function CardsPage() {
               accept=".json,application/json"
               style={{ display: "none" }}
               onChange={(e) => {
-                void importFromJsonFile(e.target.files?.[0] || null);
+                void importCardsFromFile(e.target.files?.[0] || null);
+                e.currentTarget.value = "";
+              }}
+            />
+
+            <button disabled={!online} onClick={() => importInputRef.current?.click()}>Import CSV</button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                void importCardsFromFile(e.target.files?.[0] || null);
                 e.currentTarget.value = "";
               }}
             />
@@ -839,6 +875,9 @@ export default function CardsPage() {
               />
             </label>
             <div className="modal-actions">
+              <button disabled={busyCardId === editingCardId || !editForm.name.trim()} onClick={saveEdit}>
+                Save Changes
+              </button>
               <button
                 className="button-danger"
                 disabled={busyCardId === editingCardId}
@@ -848,9 +887,6 @@ export default function CardsPage() {
               </button>
               <button className="button-secondary" disabled={busyCardId === editingCardId} onClick={requestCancelEdit}>
                 Cancel
-              </button>
-              <button disabled={busyCardId === editingCardId || !editForm.name.trim()} onClick={saveEdit}>
-                Save Changes
               </button>
             </div>
           </div>
