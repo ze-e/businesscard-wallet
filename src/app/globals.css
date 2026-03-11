@@ -174,8 +174,6 @@ button[disabled] {
   gap: 10px;
 }
 
-
-
 .card-icon-actions {
   position: absolute;
   top: 8px;
@@ -609,11 +607,15 @@ button[disabled] {
   flex: 0 0 auto;
 }
 
-.card-deck-controls {
-  display: block;
-}
+  .card-deck-controls {
+    display: none;
+    padding-bottom: 10px;
+  }
 
-@media (max-width: 640px) {
+  .card-deck-controls.is-open {
+    display: block;
+  }
+
   .card-deck-header {
     padding-bottom: 0;
   }
@@ -624,13 +626,3 @@ button[disabled] {
     justify-content: center;
     padding: 8px 12px;
   }
-
-  .card-deck-controls {
-    display: none;
-    padding-bottom: 10px;
-  }
-
-  .card-deck-controls.is-open {
-    display: block;
-  }
-}

@@ -590,7 +590,6 @@ async function importCardsFromFile(fileCandidate: File | null) {
         <div className="card-deck-heading">
           <div>
             <h1>Wallet</h1>
-            <p className="muted">Search by name, company, phone, email, or website.</p>
           </div>
           <button
             type="button"
@@ -599,11 +598,14 @@ async function importCardsFromFile(fileCandidate: File | null) {
             aria-controls="card-deck-controls"
             onClick={() => setIsMobileHeaderExpanded((prev) => !prev)}
           >
-            {isMobileHeaderExpanded ? "Hide Options" : "More Options"}
+            <>
+              {isMobileHeaderExpanded ? "Hide Search" : "Search Wallet"}
+            </>
           </button>
         </div>
 
         <div id="card-deck-controls" className={`card-deck-controls${isMobileHeaderExpanded ? " is-open" : ""}`}>
+            <p className="muted">Search by name, company, phone, email, or website.</p>
           <div className="row">
             <input placeholder="Search cards" value={query} onChange={(e) => setQuery(e.target.value)} />
             <button onClick={() => loadCards()}>Refresh</button>
